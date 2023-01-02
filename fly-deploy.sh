@@ -48,8 +48,8 @@ deployServer() {
 
   if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
     echo "fly-server.toml file exists. Using for deployment."
-    # TODO: Check if file exists already and compare?
-    cp "$WASP_PROJECT_DIR/fly-server.toml" "$WASP_BUILD_DIR/server/fly.toml"
+    cp "$WASP_PROJECT_DIR/fly-server.toml" "fly.toml"
+
     if ! flyctl deploy
     then
       echo "Error deploying server."
@@ -66,18 +66,21 @@ deployServer() {
       echo "What is your server project name?"
       read -r projectName
 
-      echo "Is $projectName correct (y/n)?"
+      echo "Is $projectName the correct server project name (y/n)?"
       read -r answer
 
       if [ "$answer" != "${answer#[Yy]}" ]
       then
+
         if flyctl config save -a "$projectName"
         then
+          echo "Saving server config."
           cp -f "fly.toml" "$WASP_PROJECT_DIR/fly-server.toml"
         else
-          echo "Error saving configuration."
+          echo "Error saving server config."
           exit
         fi
+
         if ! flyctl deploy
         then
           echo "Error deploying server."
