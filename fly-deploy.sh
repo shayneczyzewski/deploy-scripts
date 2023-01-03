@@ -3,7 +3,7 @@
 # TODO: Handle flyctl errors better.
 
 # NOTE: This script itself should not be sourced for the following to work.
-dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+dir=$(cd -- "$(dirname -- "$0")" && pwd)
 . "$dir/fly-helpers.sh" || exit
 
 deployWaspApp() {
