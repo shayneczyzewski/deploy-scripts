@@ -3,7 +3,7 @@
 # TODO: Accept and use args supplied after `wasp deploy fly [server|client] -- <flyctl-args>`
 # TODO: Implement runServerCommand() and runClientCommand()
 
-# TODO: Implement checkConfig()
+# TODO: Implement checkConfig() to notify user of potential problems.
 
 # TODO: Inject these from Wasp CLI
 export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
@@ -12,7 +12,7 @@ export WASP_APP_NAME="foobar"
 
 region="mia" # TODO: Ask user for region at start of launch.
 
-# Check for Fly.io CLI
+# Check for Fly.io CLI.
 checkForExecutable() {
   if ! command -v flyctl >/dev/null
   then
@@ -22,14 +22,13 @@ checkForExecutable() {
   fi
 }
 
-# Ensure the user is logged in
+# Ensure the user is logged in.
 ensureUserLoggedIn() {
   if ! flyctl auth whoami >/dev/null 2>/dev/null
   then
     echo "You are not logged in to flyctl. Would you like to login now (y/n)?"
-    read -r answer
 
-    if [ "$answer" != "${answer#[Yy]}" ]
+    if isAnswerYes
     then
       echo "Launching login screen in your browser..."
     else
@@ -46,9 +45,6 @@ ensureUserLoggedIn() {
 }
 
 deployServer() {
-  cd "$WASP_BUILD_DIR" || exit
-  rm fly.toml
-
   if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
     echo "fly-server.toml file exists. Using for deployment."
     cp "$WASP_PROJECT_DIR/fly-server.toml" fly.toml
@@ -60,9 +56,8 @@ deployServer() {
     fi
   else
     echo "No fly-server.toml file exists. Does your app exist on Fly.io already (y/n)?"
-    read -r answer
 
-    if [ "$answer" != "${answer#[Yy]}" ]
+    if isAnswerYes
     then
       flyctl apps list
 
@@ -70,9 +65,8 @@ deployServer() {
       read -r appName
 
       echo "Is $appName the correct server app name (y/n)?"
-      read -r answer
 
-      if [ "$answer" != "${answer#[Yy]}" ]
+      if isAnswerYes
       then
 
         if flyctl config save -a "$appName"
@@ -91,29 +85,36 @@ deployServer() {
         fi
       fi
     else
-      echo "Launching a new Fly.io project."
-
-      current_seconds=$(date +%s)
-      fly_unique_name="wasp-$WASP_APP_NAME-$current_seconds" # TODO: Let user specify basename in future.
-      server_name="$fly_unique_name-server"
-      db_name="$fly_unique_name-db"
-      client_name="$fly_unique_name-client"
-      client_url="https://$client_name.fly.dev"
-
-      # TODO: Handle errors somehow.
-      flyctl launch --no-deploy --name "$server_name" --region "$region"
-      cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
-
-      flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url"
-
-      flyctl postgres create --name "$db_name" --region "$region"
-      flyctl postgres attach "$db_name"
-      flyctl deploy --remote-only
-
-      echo "Your server has been deployed! Starting on client now..."
-      launchClient "$server_name" "$client_name"
+      launchServer
     fi
   fi
+}
+
+launchServer() {
+  current_seconds=$(date +%s)
+  fly_unique_name="wasp-$WASP_APP_NAME-$current_seconds" # TODO: Let user specify basename in future.
+  server_name="$fly_unique_name-server"
+  db_name="$fly_unique_name-db"
+  client_name="$fly_unique_name-client"
+  client_url="https://$client_name.fly.dev"
+
+  echo "Launching server with name $server_name"
+
+  cd "$WASP_BUILD_DIR" || exit
+  rm fly.toml
+
+  # TODO: Handle errors somehow.
+  flyctl launch --no-deploy --name "$server_name" --region "$region"
+  cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
+
+  flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url"
+
+  flyctl postgres create --name "$db_name" --region "$region"
+  flyctl postgres attach "$db_name"
+  flyctl deploy --remote-only
+
+  echo "Your server has been deployed! Starting on client now..."
+  launchClient "$server_name" "$client_name"
 }
 
 launchClient() {  
@@ -147,6 +148,16 @@ launchClient() {
 
 ensureEnvarsSet() {
   true;
+}
+
+isAnswerYes() {
+  read -r answer
+  if [ "$answer" != "${answer#[Yy]}" ]
+  then
+    return 0
+  else
+    return 1
+  fi
 }
 
 # Run it!!!!
