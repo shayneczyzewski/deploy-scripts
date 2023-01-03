@@ -10,6 +10,8 @@ export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
 export WASP_BUILD_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp/.wasp/build"
 export WASP_APP_NAME="foobar"
 
+region="mia" # TODO: Ask user for region at start of launch.
+
 # Check for Fly.io CLI
 checkForExecutable() {
   if ! command -v flyctl >/dev/null
@@ -99,17 +101,17 @@ deployServer() {
       client_url="https://$client_name.fly.dev"
 
       # TODO: Handle errors somehow.
-      flyctl launch --no-deploy --name "$server_name"
+      flyctl launch --no-deploy --name "$server_name" --region "$region"
       cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
       flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url"
 
-      flyctl postgres create --name "$db_name"
+      flyctl postgres create --name "$db_name" --region "$region"
       flyctl postgres attach "$db_name"
       flyctl deploy --remote-only
 
       echo "Your server has been deployed! Starting on client now..."
-      launchClient server_name client_name
+      launchClient "$server_name" "$client_name"
     fi
   fi
 }
@@ -132,7 +134,7 @@ launchClient() {
   cp -f "../.dockerignore" ".dockerignore"
 
   # TODO: Handle errors somehow.
-  flyctl launch --no-deploy --name "$client_name"
+  flyctl launch --no-deploy --name "$client_name" --region "$region"
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-client.toml"
 
   # goStatic listens on port 8043 by default, but the default fly.toml assumes port 8080.
