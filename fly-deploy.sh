@@ -1,6 +1,8 @@
 #!/bin/sh
 
-# TODO: Inject these from Wasp CLI
+# TODO: Handle flyctl errors better.
+
+# TODO: Inject these from Wasp CLI.
 export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
 export WASP_BUILD_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp/.wasp/build"
 export WASP_APP_NAME="foobar"
@@ -19,7 +21,7 @@ checkForExecutable() {
 ensureUserLoggedIn() {
   if ! flyctl auth whoami >/dev/null 2>/dev/null
   then
-    echo "You are not logged in to flyctl. Would you like to login now (y/n)?"
+    printf "You are not logged in to flyctl. Would you like to login now (y/n)? "
 
     if isAnswerYes
     then
@@ -40,17 +42,21 @@ ensureUserLoggedIn() {
 # Get the preferred region from the user.
 region=""
 getRegion() {
-  if [ "$region" = "" ]; then
+  if [ "$region" = "" ]
+  then
     echo ""
-    echo "In what region would you like to launch your Wasp app?"
-    
+
     flyctl platform regions || exit
+
+    printf "\nIn what region above would you like to launch your Wasp app?"
+    printf "\nPlease input the three letter code: "
 
     read -r selected_region
 
-    echo "Is $selected_region correct (y/n)?"
+    printf "Is %s correct (y/n)? " "$selected_region"
 
-    if isAnswerYes; then
+    if isAnswerYes
+    then
       region="$selected_region"
       echo ""
     else
@@ -60,10 +66,12 @@ getRegion() {
 }
 
 launchWaspApp() {
-  if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
+  if test -f "$WASP_PROJECT_DIR/fly-server.toml"
+  then
     echo "fly-server.toml exists. Skipping server launch."
 
-    if test -f "$WASP_PROJECT_DIR/fly-client.toml"; then
+    if test -f "$WASP_PROJECT_DIR/fly-client.toml"
+    then
       echo "fly-client.toml exists. Skipping client launch."
     else
       # Infer names from fly-server.toml file.
@@ -79,10 +87,25 @@ launchWaspApp() {
 
 launchServer() {
   current_seconds=$(date +%s)
-  fly_unique_name="wasp-$WASP_APP_NAME-$current_seconds" # TODO: Let user specify basename in future.
-  server_name="$fly_unique_name-server"
-  db_name="$fly_unique_name-db"
-  client_name="$fly_unique_name-client"
+  sample_basename="wasp-$WASP_APP_NAME-$current_seconds"
+  
+  echo "What would you like your app basename to be called? For example: $sample_basename"
+  echo "We use this name to construct the others, like $sample_basename-server, $sample_basename-db, and $sample_basename-client."
+  echo "Note: This must be unique across all of Fly.io. If it is a duplicate, the deploy will be aborted. Please consider using a long name with letters and numbers."
+
+  printf "Desired basename: "
+  read -r desired_basename
+
+  printf "Is %s correct (y/n)? " "$desired_basename"
+
+  if ! isAnswerYes
+  then
+    exit
+  fi
+
+  server_name="$desired_basename-server"
+  db_name="$desired_basename-db"
+  client_name="$desired_basename-client"
   client_url="https://$client_name.fly.dev"
 
   echo "Launching server with name $server_name"
@@ -92,10 +115,10 @@ launchServer() {
   cd "$WASP_BUILD_DIR" || exit
   rm -f fly.toml
 
-  # TODO: Handle errors better.
   flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
+  # TODO: todoChangeToRandomString
   flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url" || exit
 
   flyctl postgres create --name "$db_name" --region "$region" || exit
@@ -120,13 +143,14 @@ launchClient() {
   server_url="https://$server_name.fly.dev"
   client_url="https://$client_name.fly.dev"
 
+  echo "Building web client for production..."
+
   npm install && REACT_APP_API_URL="$server_url" npm run build
 
   dockerfile_contents="FROM pierrezemb/gostatic\nCOPY ./build/ /srv/http/"
   echo "$dockerfile_contents" > Dockerfile
   cp -f "../.dockerignore" ".dockerignore"
 
-  # TODO: Handle errors better.
   flyctl launch --no-deploy --name "$client_name" --region "$region" || exit
 
   # goStatic listens on port 8043 by default, but the default fly.toml assumes port 8080.
@@ -141,11 +165,10 @@ launchClient() {
   echo "Congratulations! Your Wasp app is now accessible at $client_url"
 }
 
-# TODO: Improve this.
+# TODO: Improve this to retry if not y/n.
 isAnswerYes() {
   read -r answer
-  if [ "$answer" != "${answer#[Yy]}" ]
-  then
+  if [ "$answer" != "${answer#[Yy]}" ]; then
     return 0
   else
     return 1
