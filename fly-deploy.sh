@@ -1,16 +1,9 @@
 #!/bin/sh
 
-# TODO: Accept and use args supplied after `wasp deploy fly [server|client] -- <flyctl-args>`
-# TODO: Implement runServerCommand() and runClientCommand()
-
-# TODO: Implement checkConfig() to notify user of potential problems.
-
 # TODO: Inject these from Wasp CLI
 export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
 export WASP_BUILD_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp/.wasp/build"
 export WASP_APP_NAME="foobar"
-
-region="mia" # TODO: Ask user for region at start of launch.
 
 # Check for Fly.io CLI.
 checkForExecutable() {
@@ -44,49 +37,43 @@ ensureUserLoggedIn() {
   fi
 }
 
-deployServer() {
-  if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
-    echo "fly-server.toml file exists. Using for deployment."
-    cp "$WASP_PROJECT_DIR/fly-server.toml" fly.toml
+# Get the preferred region from the user.
+region=""
+getRegion() {
+  if [ "$region" = "" ]; then
+    echo ""
+    echo "In what region would you like to launch your Wasp app?"
+    
+    flyctl platform regions || exit
 
-    if ! flyctl deploy
-    then
-      echo "Error deploying server."
+    read -r selected_region
+
+    echo "Is $selected_region correct (y/n)?"
+
+    if isAnswerYes; then
+      region="$selected_region"
+      echo ""
+    else
       exit
     fi
-  else
-    echo "No fly-server.toml file exists. Does your app exist on Fly.io already (y/n)?"
+  fi
+}
 
-    if isAnswerYes
-    then
-      flyctl apps list
+launchWaspApp() {
+  if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
+    echo "fly-server.toml exists. Skipping server launch."
 
-      echo "What is your server app name?"
-      read -r appName
-
-      echo "Is $appName the correct server app name (y/n)?"
-
-      if isAnswerYes
-      then
-
-        if flyctl config save -a "$appName"
-        then
-          echo "Saving server config."
-          cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
-        else
-          echo "Error saving server config."
-          exit
-        fi
-
-        if ! flyctl deploy --remote-only
-        then
-          echo "Error deploying server."
-          exit
-        fi
-      fi
+    if test -f "$WASP_PROJECT_DIR/fly-client.toml"; then
+      echo "fly-client.toml exists. Skipping client launch."
     else
-      launchServer
+      # Infer names from fly-server.toml file.
+      server_name=$(grep "app =" $WASP_PROJECT_DIR/fly-server.toml | cut -d '"' -f2)
+      client_name=$(echo "$server_name" | sed 's/-server$/-client/')
+
+      launchClient "$server_name" "$client_name"
     fi
+  else
+    launchServer
   fi
 }
 
@@ -100,18 +87,20 @@ launchServer() {
 
   echo "Launching server with name $server_name"
 
-  cd "$WASP_BUILD_DIR" || exit
-  rm fly.toml
+  getRegion
 
-  # TODO: Handle errors somehow.
-  flyctl launch --no-deploy --name "$server_name" --region "$region"
+  cd "$WASP_BUILD_DIR" || exit
+  rm -f fly.toml
+
+  # TODO: Handle errors better.
+  flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
-  flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url"
+  flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url" || exit
 
-  flyctl postgres create --name "$db_name" --region "$region"
-  flyctl postgres attach "$db_name"
-  flyctl deploy --remote-only
+  flyctl postgres create --name "$db_name" --region "$region" || exit
+  flyctl postgres attach "$db_name" || exit
+  flyctl deploy --remote-only || exit
 
   echo "Your server has been deployed! Starting on client now..."
   launchClient "$server_name" "$client_name"
@@ -123,8 +112,10 @@ launchClient() {
 
   echo "Launching client with name $client_name"
 
+  getRegion
+
   cd "$WASP_BUILD_DIR/web-app" || exit
-  rm fly.toml
+  rm -f fly.toml
 
   server_url="https://$server_name.fly.dev"
   client_url="https://$client_name.fly.dev"
@@ -135,8 +126,8 @@ launchClient() {
   echo "$dockerfile_contents" > Dockerfile
   cp -f "../.dockerignore" ".dockerignore"
 
-  # TODO: Handle errors somehow.
-  flyctl launch --no-deploy --name "$client_name" --region "$region"
+  # TODO: Handle errors better.
+  flyctl launch --no-deploy --name "$client_name" --region "$region" || exit
 
   # goStatic listens on port 8043 by default, but the default fly.toml assumes port 8080.
   cp fly.toml fly.toml.bak
@@ -145,15 +136,12 @@ launchClient() {
 
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-client.toml"
 
-  flyctl deploy --remote-only
+  flyctl deploy --remote-only || exit
 
   echo "Congratulations! Your Wasp app is now accessible at $client_url"
 }
 
-ensureEnvarsSet() {
-  true;
-}
-
+# TODO: Improve this.
 isAnswerYes() {
   read -r answer
   if [ "$answer" != "${answer#[Yy]}" ]
@@ -164,10 +152,8 @@ isAnswerYes() {
   fi
 }
 
-# Run it!!!!
-
-echo "Let's deploy Wasp to Fly.io!"
+echo "Launching your Wasp app to Fly.io!"
 
 checkForExecutable
 ensureUserLoggedIn
-deployServer
+launchWaspApp
