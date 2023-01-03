@@ -127,6 +127,7 @@ launchClient() {
   rm fly.toml
 
   server_url="https://$server_name.fly.dev"
+  client_url="https://$client_name.fly.dev"
 
   npm install && REACT_APP_API_URL="$server_url" npm run build
 
@@ -136,14 +137,17 @@ launchClient() {
 
   # TODO: Handle errors somehow.
   flyctl launch --no-deploy --name "$client_name" --region "$region"
-  cp -f fly.toml "$WASP_PROJECT_DIR/fly-client.toml"
 
   # goStatic listens on port 8043 by default, but the default fly.toml assumes port 8080.
   cp fly.toml fly.toml.bak
   sed "s/= 8080/= 8043/1" fly.toml > fly.toml.new
   mv fly.toml.new fly.toml
 
+  cp -f fly.toml "$WASP_PROJECT_DIR/fly-client.toml"
+
   flyctl deploy --remote-only
+
+  echo "Congratulations! Your Wasp app is now accessible at $client_url"
 }
 
 ensureEnvarsSet() {
