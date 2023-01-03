@@ -45,11 +45,11 @@ ensureUserLoggedIn() {
 
 deployServer() {
   cd "$WASP_BUILD_DIR" || exit
-  rm "fly.toml"
+  rm fly.toml
 
   if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
     echo "fly-server.toml file exists. Using for deployment."
-    cp "$WASP_PROJECT_DIR/fly-server.toml" "fly.toml"
+    cp "$WASP_PROJECT_DIR/fly-server.toml" fly.toml
 
     if ! flyctl deploy
     then
@@ -76,7 +76,7 @@ deployServer() {
         if flyctl config save -a "$appName"
         then
           echo "Saving server config."
-          cp -f "fly.toml" "$WASP_PROJECT_DIR/fly-server.toml"
+          cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
         else
           echo "Error saving server config."
           exit
@@ -96,24 +96,51 @@ deployServer() {
       server_name="$fly_unique_name-server"
       db_name="$fly_unique_name-db"
       client_name="$fly_unique_name-client"
+      client_url="https://$client_name.fly.dev"
 
       # TODO: Handle errors somehow.
       flyctl launch --no-deploy --name "$server_name"
-      cp -f "fly.toml" "$WASP_PROJECT_DIR/fly-server.toml"
+      cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
-      flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_name"
+      flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url"
 
       flyctl postgres create --name "$db_name"
       flyctl postgres attach "$db_name"
       flyctl deploy --remote-only
 
-      echo "Your server has been deployed! Please deploy your client now."
+      echo "Your server has been deployed! Starting on client now..."
+      launchClient server_name client_name
     fi
   fi
 }
 
-deployClient() {
-  true;
+launchClient() {  
+  server_name=$1
+  client_name=$2
+
+  echo "Launching client with name $client_name"
+
+  cd "$WASP_BUILD_DIR/web-app" || exit
+  rm fly.toml
+
+  server_url="https://$server_name.fly.dev"
+
+  npm install && REACT_APP_API_URL="$server_url" npm run build
+
+  dockerfile_contents="FROM pierrezemb/gostatic\nCOPY ./build/ /srv/http/"
+  echo "$dockerfile_contents" > Dockerfile
+  cp -f "../.dockerignore" ".dockerignore"
+
+  # TODO: Handle errors somehow.
+  flyctl launch --no-deploy --name "$client_name"
+  cp -f fly.toml "$WASP_PROJECT_DIR/fly-client.toml"
+
+  # goStatic listens on port 8043 by default, but the default fly.toml assumes port 8080.
+  cp fly.toml fly.toml.bak
+  sed "s/= 8080/= 8043/1" fly.toml > fly.toml.new
+  mv fly.toml.new fly.toml
+
+  flyctl deploy --remote-only
 }
 
 ensureEnvarsSet() {
