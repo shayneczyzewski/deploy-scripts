@@ -1,20 +1,21 @@
 #!/bin/sh
 
-# TODO: Accept and use args supplied after `wasp deploy fly -- [server|client] <flyctl-args>`
+# TODO: Accept and use args supplied after `wasp deploy fly [server|client] -- <flyctl-args>`
 # TODO: Implement runServerCommand() and runClientCommand()
 
 # TODO: Implement checkConfig()
 
 # TODO: Inject these from Wasp CLI
 export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
-export WASP_BUILD_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp/.wasp/out"
+export WASP_BUILD_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp/.wasp/build"
 export WASP_APP_NAME="foobar"
 
 # Check for Fly.io CLI
 checkForExecutable() {
   if ! command -v flyctl >/dev/null
   then
-    echo "The Fly.io CLI is not installed on this system. Please install the flyctl here: https://fly.io/docs/hands-on/install-flyctl"
+    echo "The Fly.io CLI is not available on this system."
+    echo "Please install the flyctl here: https://fly.io/docs/hands-on/install-flyctl"
     exit
   fi
 }
@@ -43,7 +44,7 @@ ensureUserLoggedIn() {
 }
 
 deployServer() {
-  cd "$WASP_BUILD_DIR/server" || exit
+  cd "$WASP_BUILD_DIR" || exit
   rm "fly.toml"
 
   if test -f "$WASP_PROJECT_DIR/fly-server.toml"; then
@@ -56,23 +57,23 @@ deployServer() {
       exit
     fi
   else
-    echo "No fly-server.toml file exists. Does your project exist on Fly.io already (y/n)?"
+    echo "No fly-server.toml file exists. Does your app exist on Fly.io already (y/n)?"
     read -r answer
 
     if [ "$answer" != "${answer#[Yy]}" ]
     then
       flyctl apps list
 
-      echo "What is your server project name?"
-      read -r projectName
+      echo "What is your server app name?"
+      read -r appName
 
-      echo "Is $projectName the correct server project name (y/n)?"
+      echo "Is $appName the correct server app name (y/n)?"
       read -r answer
 
       if [ "$answer" != "${answer#[Yy]}" ]
       then
 
-        if flyctl config save -a "$projectName"
+        if flyctl config save -a "$appName"
         then
           echo "Saving server config."
           cp -f "fly.toml" "$WASP_PROJECT_DIR/fly-server.toml"
@@ -81,22 +82,32 @@ deployServer() {
           exit
         fi
 
-        if ! flyctl deploy
+        if ! flyctl deploy --remote-only
         then
           echo "Error deploying server."
           exit
         fi
       fi
     else
-      echo "Launching new Fly.io project..."
+      echo "Launching a new Fly.io project."
 
-      if flyctl launch --remote-only
-      then
-        cp -f "fly.toml" "$WASP_PROJECT_DIR/fly-server.toml"
-      else
-        echo "There was a problem launching the server. Please check your Fly.io dashboard."
-        exit
-      fi
+      current_seconds=$(date +%s)
+      fly_unique_name="wasp-$WASP_APP_NAME-$current_seconds" # TODO: Let user specify basename in future.
+      server_name="$fly_unique_name-server"
+      db_name="$fly_unique_name-db"
+      client_name="$fly_unique_name-client"
+
+      # TODO: Handle errors somehow.
+      flyctl launch --no-deploy --name "$server_name"
+      cp -f "fly.toml" "$WASP_PROJECT_DIR/fly-server.toml"
+
+      flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_name"
+
+      flyctl postgres create --name "$db_name"
+      flyctl postgres attach "$db_name"
+      flyctl deploy --remote-only
+
+      echo "Your server has been deployed! Please deploy your client now."
     fi
   fi
 }
