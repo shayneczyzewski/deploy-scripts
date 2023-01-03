@@ -118,8 +118,8 @@ launchServer() {
   flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
-  # TODO: todoChangeToRandomString
-  flyctl secrets set JWT_SECRET=todoChangeToRandomString PORT=8080 WASP_WEB_CLIENT_URL="$client_url" || exit
+  random_string=$(od -x /dev/random | head -1 | awk '{print $2$3$4$5$6$7$8$9}')
+  flyctl secrets set JWT_SECRET="$random_string" PORT=8080 WASP_WEB_CLIENT_URL="$client_url" || exit
 
   flyctl postgres create --name "$db_name" --region "$region" || exit
   flyctl postgres attach "$db_name" || exit
