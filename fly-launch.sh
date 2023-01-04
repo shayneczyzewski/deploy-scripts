@@ -89,7 +89,7 @@ launchServer() {
   cd "$WASP_BUILD_DIR" || exit
   rm -f fly.toml
 
-  flyctl launch --no-deploy --name "$server_name" --region "$region" --env TEST=foo || exit
+  flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
   random_string=$(od -x /dev/urandom | head -1 | awk '{print $2$3$4$5$6$7$8$9}')
