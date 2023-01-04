@@ -58,7 +58,12 @@ setupClientDocker() {
 
 # Colors
 YELLOW=$(tput setaf 3)
+export YELLOW
 RED=$(tput setaf 1)
+export RED
 CLEAR_FORMATTING="\e[0m"
+export CLEAR_FORMATTING
 SET_BOLD="\e[1m"
+export SET_BOLD
 UNSET_BOLD="\e[21m"
+export UNSET_BOLD

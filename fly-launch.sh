@@ -16,9 +16,9 @@ getRegion() {
     flyctl platform regions || exit
 
     printf "\nIn what region above would you like to launch your Wasp app?"
-    printf "$SET_BOLD"
+    printf "%s" "$SET_BOLD"
     printf "\n\nPlease input the three letter code: "
-    printf "$CLEAR_FORMATTING"
+    printf "%s" "$CLEAR_FORMATTING"
 
     read -r selected_region
 
@@ -61,15 +61,15 @@ launchServer() {
   current_seconds=$(date +%s)
   sample_basename="wasp-$WASP_APP_NAME-$current_seconds"
   
-  printf "\nWhat would you like your app basename to be called? For example: $YELLOW $sample_basename $CLEAR_FORMATTING"
-  printf "\nWe use this name to construct the others, like $sample_basename-server, $sample_basename-db, and $sample_basename-client."
+  printf "\nWhat would you like your app basename to be called? For example: %s" "$YELLOW $sample_basename $CLEAR_FORMATTING"
+  printf "\nWe use this name to construct the others, like %s" "$sample_basename-server, $sample_basename-db, and $sample_basename-client."
   printf "\nNote: This must be unique across all of Fly.io. If it is a duplicate, the deploy will be aborted. Please consider using a long name with letters and numbers."
 
-  printf "$SET_BOLD"
+  printf "%s" "$SET_BOLD"
   printf "\n\nDesired basename: "
   read -r desired_basename
 
-  printf "$CLEAR_FORMATTING"
+  printf "%s" "$CLEAR_FORMATTING"
   printf "Is %s correct (y/n)? " "$desired_basename"
 
   if ! isAnswerYes

@@ -11,7 +11,7 @@ shift
 args=$*
 
 runServerCommand() {
-  printf "\nRunning flyctl command in server context as follows: flyctl $args\n\n"
+  printf "\nRunning flyctl command in server context as follows: flyctl %s\n\n" "$args"
 
   if ! test -f "$WASP_PROJECT_DIR/fly-server.toml"
   then
@@ -29,7 +29,7 @@ runServerCommand() {
 }
 
 runClientCommand() {
-  printf "\nRunning flyctl command in client context as follows: flyctl $args\n\n"
+  printf "\nRunning flyctl command in client context as follows: flyctl %s\n\n" "$args"
 
   if ! test -f "$WASP_PROJECT_DIR/fly-client.toml"
   then
