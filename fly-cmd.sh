@@ -25,7 +25,7 @@ runServerCommand() {
   # Run flyctl command with args provided by user.
   eval "flyctl $args" || exit
 
-  copyLocalTomlBackToProjectDir server_toml_file_path || exit
+  copyLocalTomlBackToProjectDir "$server_toml_file_path" || exit
 }
 
 runClientCommand() {
@@ -43,7 +43,7 @@ runClientCommand() {
   # Run flyctl command with args provided by user.
   eval "flyctl $args" || exit
 
-  copyLocalTomlBackToProjectDir client_toml_file_path || exit
+  copyLocalTomlBackToProjectDir "$client_toml_file_path" || exit
 }
 
 checkForExecutable

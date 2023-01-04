@@ -91,7 +91,7 @@ launchServer() {
   rm -f fly.toml
 
   flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
-  copyLocalTomlBackToProjectDir server_toml_file || exit
+  copyLocalTomlBackToProjectDir "$server_toml_file_path" || exit
 
   random_string=$(od -x /dev/urandom | head -1 | awk '{print $2$3$4$5$6$7$8$9}')
   flyctl secrets set JWT_SECRET="$random_string" PORT=8080 WASP_WEB_CLIENT_URL="$client_url" || exit
@@ -133,7 +133,7 @@ launchClient() {
   sed "s/= 8080/= 8043/1" fly.toml > fly.toml.new
   mv fly.toml.new fly.toml
 
-  copyLocalTomlBackToProjectDir client_toml_file_path || exit
+  copyLocalTomlBackToProjectDir "$client_toml_file_path" || exit
 
   flyctl deploy --remote-only || exit
 

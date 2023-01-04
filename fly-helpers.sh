@@ -66,13 +66,13 @@ client_toml_file_path="$WASP_PROJECT_DIR/$client_toml_file_name"
 export client_toml_file_path
 
 copyTomlDownToCwd() {
-  toml_file=$1
-  cp "$toml_file" fly.toml
+  toml_file_path=$1
+  cp "$toml_file_path" fly.toml
 }
 
 copyLocalTomlBackToProjectDir() {
-  toml_file=$1
-  cp -f fly.toml "$toml_file"
+  toml_file_path=$1
+  cp -f fly.toml "$toml_file_path"
 }
 
 serverTomlExists() {
