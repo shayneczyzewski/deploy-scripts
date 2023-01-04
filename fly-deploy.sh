@@ -26,7 +26,7 @@ deployServer() {
   echo "Deploying server..."
 
   cd "$WASP_BUILD_DIR" || exit
-  copyTomlDownToCwd server_toml_file_path || exit
+  copyTomlDownToCwd "$server_toml_file_path" || exit
 
   flyctl deploy --remote-only || exit
 
@@ -37,7 +37,7 @@ deployClient() {
   echo "Deploying client..."
 
   cd "$WASP_BUILD_DIR/web-app" || exit
-  copyTomlDownToCwd client_toml_file_path|| exit
+  copyTomlDownToCwd "$client_toml_file_path"|| exit
 
   # Infer names from client fly.toml file.
   client_name=$(grep "app =" $client_toml_file_path | cut -d '"' -f2)

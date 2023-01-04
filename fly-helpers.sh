@@ -51,7 +51,7 @@ isAnswerYes() {
 # Adds dummy .dockerignore to supress CLI question.
 # Ref: https://fly.io/docs/languages-and-frameworks/static/
 setupClientDocker() {
-  dockerfile_contents="FROM pierrezemb/gostatic\nCOPY ./build/ /srv/http/"
+  dockerfile_contents="FROM pierrezemb/gostatic\nCMD [ \"-fallback\", \"index.html\" ]\nCOPY ./build/ /srv/http/"
   echo "$dockerfile_contents" > Dockerfile
   touch ".dockerignore"
 }

@@ -20,7 +20,7 @@ runServerCommand() {
   fi
 
   cd "$WASP_BUILD_DIR" || exit
-  copyTomlDownToCwd server_toml_file_path || exit
+  copyTomlDownToCwd "$server_toml_file_path" || exit
 
   # Run flyctl command with args provided by user.
   eval "flyctl $args" || exit
@@ -38,7 +38,7 @@ runClientCommand() {
   fi
 
   cd "$WASP_BUILD_DIR/web-app" || exit
-  copyTomlDownToCwd client_toml_file_path || exit
+  copyTomlDownToCwd "$client_toml_file_path" || exit
 
   # Run flyctl command with args provided by user.
   eval "flyctl $args" || exit
