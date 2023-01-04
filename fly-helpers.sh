@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# TODO: Inject these from Wasp CLI.
-export WASP_PROJECT_DIR="/home/shayne/dev/wasp/waspc/examples/todoApp"
-export WASP_BUILD_DIR="/home/shayne/dev/wasp/waspc/examples/todoApp/.wasp/build"
+# TODO: Inject these from Wasp CLI. The scripts assume `wasp build` has been called.
+export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
+export WASP_BUILD_DIR="$WASP_PROJECT_DIR/.wasp/build"
 export WASP_APP_NAME="foobar"
 
 # Check for Fly.io CLI.
@@ -46,3 +46,19 @@ isAnswerYes() {
     return 1
   fi
 }
+
+# Creates the necessary Dockerfile for deploying static websites to Fly.io.
+# Adds dummy .dockerignore to supress CLI question.
+# Ref: https://fly.io/docs/languages-and-frameworks/static/
+setupClientDocker() {
+  dockerfile_contents="FROM pierrezemb/gostatic\nCOPY ./build/ /srv/http/"
+  echo "$dockerfile_contents" > Dockerfile
+  touch ".dockerignore"
+}
+
+# Colors
+YELLOW=$(tput setaf 3)
+RED=$(tput setaf 1)
+CLEAR_FORMATTING="\e[0m"
+SET_BOLD="\e[1m"
+UNSET_BOLD="\e[21m"

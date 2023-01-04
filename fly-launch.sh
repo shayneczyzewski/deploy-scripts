@@ -16,7 +16,9 @@ getRegion() {
     flyctl platform regions || exit
 
     printf "\nIn what region above would you like to launch your Wasp app?"
-    printf "\nPlease input the three letter code: "
+    printf "$SET_BOLD"
+    printf "\n\nPlease input the three letter code: "
+    printf "$CLEAR_FORMATTING"
 
     read -r selected_region
 
@@ -32,6 +34,7 @@ getRegion() {
   fi
 }
 
+# Decides if we should launch the server/client based on toml file existence.
 launchWaspApp() {
   if test -f "$WASP_PROJECT_DIR/fly-server.toml"
   then
@@ -52,17 +55,21 @@ launchWaspApp() {
   fi
 }
 
+# Launches the server in a user-specified region, using a user-specified app base name.
+# The app base name is used for db and client as well.
 launchServer() {
   current_seconds=$(date +%s)
   sample_basename="wasp-$WASP_APP_NAME-$current_seconds"
   
-  echo "What would you like your app basename to be called? For example: $sample_basename"
-  echo "We use this name to construct the others, like $sample_basename-server, $sample_basename-db, and $sample_basename-client."
-  echo "Note: This must be unique across all of Fly.io. If it is a duplicate, the deploy will be aborted. Please consider using a long name with letters and numbers."
+  printf "\nWhat would you like your app basename to be called? For example: $YELLOW $sample_basename $CLEAR_FORMATTING"
+  printf "\nWe use this name to construct the others, like $sample_basename-server, $sample_basename-db, and $sample_basename-client."
+  printf "\nNote: This must be unique across all of Fly.io. If it is a duplicate, the deploy will be aborted. Please consider using a long name with letters and numbers."
 
-  printf "Desired basename: "
+  printf "$SET_BOLD"
+  printf "\n\nDesired basename: "
   read -r desired_basename
 
+  printf "$CLEAR_FORMATTING"
   printf "Is %s correct (y/n)? " "$desired_basename"
 
   if ! isAnswerYes
@@ -82,7 +89,7 @@ launchServer() {
   cd "$WASP_BUILD_DIR" || exit
   rm -f fly.toml
 
-  flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
+  flyctl launch --no-deploy --name "$server_name" --region "$region" --env TEST=foo || exit
   cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
 
   random_string=$(od -x /dev/urandom | head -1 | awk '{print $2$3$4$5$6$7$8$9}')
@@ -96,6 +103,7 @@ launchServer() {
   launchClient "$server_name" "$client_name"
 }
 
+# Launches client with provided server/client names.
 launchClient() {  
   server_name=$1
   client_name=$2
@@ -112,11 +120,10 @@ launchClient() {
 
   echo "Building web client for production..."
 
-  npm install && REACT_APP_API_URL="$server_url" npm run build
+  npm install || exit
+  REACT_APP_API_URL="$server_url" npm run build || exit
 
-  dockerfile_contents="FROM pierrezemb/gostatic\nCOPY ./build/ /srv/http/"
-  echo "$dockerfile_contents" > Dockerfile
-  cp -f "../.dockerignore" ".dockerignore"
+  setupClientDocker
 
   flyctl launch --no-deploy --name "$client_name" --region "$region" || exit
 
