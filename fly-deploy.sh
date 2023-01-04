@@ -7,16 +7,16 @@ dir=$(cd -- "$(dirname -- "$0")" && pwd)
 . "$dir/fly-helpers.sh" || exit
 
 deployWaspApp() {
-  if ! test -f "$WASP_PROJECT_DIR/fly-server.toml"
+  if ! serverTomlExists
   then
-    echo "fly-server.toml missing. Skipping server deploy. Do you want to launch instead?"
+    echo "$server_toml_file_name missing. Skipping server deploy. Do you want to launch instead?"
   else
     deployServer
   fi
 
-  if ! test -f "$WASP_PROJECT_DIR/fly-client.toml"
+  if ! clientTomlExists
   then
-    echo "fly-client.toml missing. Skipping client deploy. Do you want to launch instead?"
+    echo "$client_toml_file_name missing. Skipping client deploy. Do you want to launch instead?"
   else
     deployClient
   fi
@@ -26,7 +26,7 @@ deployServer() {
   echo "Deploying server..."
 
   cd "$WASP_BUILD_DIR" || exit
-  cp "$WASP_PROJECT_DIR/fly-server.toml" fly.toml || exit
+  copyTomlDownToCwd server_toml_file_path || exit
 
   flyctl deploy --remote-only || exit
 
@@ -37,10 +37,10 @@ deployClient() {
   echo "Deploying client..."
 
   cd "$WASP_BUILD_DIR/web-app" || exit
-  cp "$WASP_PROJECT_DIR/fly-client.toml" fly.toml || exit
+  copyTomlDownToCwd client_toml_file_path|| exit
 
-  # Infer names from fly-server.toml file.
-  client_name=$(grep "app =" $WASP_PROJECT_DIR/fly-client.toml | cut -d '"' -f2)
+  # Infer names from client fly.toml file.
+  client_name=$(grep "app =" $client_toml_file_path | cut -d '"' -f2)
   server_name=$(echo "$client_name" | sed 's/-client$/-server/')
   client_url="https://$client_name.fly.dev"
   server_url="https://$server_name.fly.dev"

@@ -3,7 +3,7 @@
 # TODO: Inject these from Wasp CLI. The scripts assume `wasp build` has been called.
 export WASP_PROJECT_DIR="/Users/shayne/dev/wasp/waspc/examples/todoApp"
 export WASP_BUILD_DIR="$WASP_PROJECT_DIR/.wasp/build"
-export WASP_APP_NAME="foobar"
+export WASP_APP_NAME="TodoApp"
 
 # Check for Fly.io CLI.
 checkForExecutable() {
@@ -54,6 +54,33 @@ setupClientDocker() {
   dockerfile_contents="FROM pierrezemb/gostatic\nCOPY ./build/ /srv/http/"
   echo "$dockerfile_contents" > Dockerfile
   touch ".dockerignore"
+}
+
+server_toml_file_name="fly-server.toml"
+export server_toml_file_name
+server_toml_file_path="$WASP_PROJECT_DIR/$server_toml_file_name"
+export server_toml_file_path
+client_toml_file_name="fly-client.toml"
+export client_toml_file_name
+client_toml_file_path="$WASP_PROJECT_DIR/$client_toml_file_name"
+export client_toml_file_path
+
+copyTomlDownToCwd() {
+  toml_file=$1
+  cp "$toml_file" fly.toml
+}
+
+copyLocalTomlBackToProjectDir() {
+  toml_file=$1
+  cp -f fly.toml "$toml_file"
+}
+
+serverTomlExists() {
+  test -f "$server_toml_file_path"
+}
+
+clientTomlExists() {
+  test -f "$client_toml_file_path"
 }
 
 # Colors

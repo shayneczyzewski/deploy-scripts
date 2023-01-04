@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2059
 
 # TODO: Handle flyctl errors better.
 
@@ -16,9 +17,9 @@ getRegion() {
     flyctl platform regions || exit
 
     printf "\nIn what region above would you like to launch your Wasp app?"
-    printf "%s" "$SET_BOLD"
+    printf "$SET_BOLD"
     printf "\n\nPlease input the three letter code: "
-    printf "%s" "$CLEAR_FORMATTING"
+    printf "$CLEAR_FORMATTING"
 
     read -r selected_region
 
@@ -36,16 +37,16 @@ getRegion() {
 
 # Decides if we should launch the server/client based on toml file existence.
 launchWaspApp() {
-  if test -f "$WASP_PROJECT_DIR/fly-server.toml"
+  if serverTomlExists
   then
-    echo "fly-server.toml exists. Skipping server launch."
+    echo "$server_toml_file_name exists. Skipping server launch."
 
-    if test -f "$WASP_PROJECT_DIR/fly-client.toml"
+    if clientTomlExists
     then
-      echo "fly-client.toml exists. Skipping client launch."
+      echo "$client_toml_file_name exists. Skipping client launch."
     else
-      # Infer names from fly-server.toml file.
-      server_name=$(grep "app =" $WASP_PROJECT_DIR/fly-server.toml | cut -d '"' -f2)
+      # Infer names from server fly.toml file.
+      server_name=$(grep "app =" $server_toml_file_path | cut -d '"' -f2)
       client_name=$(echo "$server_name" | sed 's/-server$/-client/')
 
       launchClient "$server_name" "$client_name"
@@ -61,15 +62,15 @@ launchServer() {
   current_seconds=$(date +%s)
   sample_basename="wasp-$WASP_APP_NAME-$current_seconds"
   
-  printf "\nWhat would you like your app basename to be called? For example: %s" "$YELLOW $sample_basename $CLEAR_FORMATTING"
+  printf "\nWhat would you like your app basename to be called? For example: $YELLOW $sample_basename $CLEAR_FORMATTING"
   printf "\nWe use this name to construct the others, like %s" "$sample_basename-server, $sample_basename-db, and $sample_basename-client."
   printf "\nNote: This must be unique across all of Fly.io. If it is a duplicate, the deploy will be aborted. Please consider using a long name with letters and numbers."
 
-  printf "%s" "$SET_BOLD"
+  printf "$SET_BOLD"
   printf "\n\nDesired basename: "
   read -r desired_basename
 
-  printf "%s" "$CLEAR_FORMATTING"
+  printf "$CLEAR_FORMATTING"
   printf "Is %s correct (y/n)? " "$desired_basename"
 
   if ! isAnswerYes
@@ -90,7 +91,7 @@ launchServer() {
   rm -f fly.toml
 
   flyctl launch --no-deploy --name "$server_name" --region "$region" || exit
-  cp -f fly.toml "$WASP_PROJECT_DIR/fly-server.toml"
+  copyLocalTomlBackToProjectDir server_toml_file || exit
 
   random_string=$(od -x /dev/urandom | head -1 | awk '{print $2$3$4$5$6$7$8$9}')
   flyctl secrets set JWT_SECRET="$random_string" PORT=8080 WASP_WEB_CLIENT_URL="$client_url" || exit
@@ -132,7 +133,7 @@ launchClient() {
   sed "s/= 8080/= 8043/1" fly.toml > fly.toml.new
   mv fly.toml.new fly.toml
 
-  cp -f fly.toml "$WASP_PROJECT_DIR/fly-client.toml"
+  copyLocalTomlBackToProjectDir client_toml_file_path || exit
 
   flyctl deploy --remote-only || exit
 
